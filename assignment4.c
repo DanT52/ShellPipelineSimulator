@@ -23,68 +23,53 @@ description:
     <arg1> is not.
 **********************************************************************/
 
-
 int main(int argc, char *argv[]){
 
-    
     int i = 0;
-    while(argv[i] && strcmp(argv[i],":") != 0) i++;
+    while(argv[i] && strcmp(argv[i],":") != 0) i++; //find :
 
-    if (!argv[i]) {  // if ":" was not found
-        printf("':' not found in arguments.\n");
-        exit(1);
-    }
+    char **cmd1 = (i > 1) ? &argv[1] : NULL;                //if i > 1 (meaning first command is given) set to it otherwize null     
+    char **cmd2 = (i < argc - 1) ? &argv[i + 1] : NULL;     //if i < argc -1 meaning the : is not at the very end, there is a second command
+    if (argv[i]) argv[i] = NULL;      // split the argv array at ':'
 
-    argv[i] = NULL;  // split the argv array at ':'
-    char **cmd1 = &argv[1];
-    char **cmd2;
-
-    if(argc -1 == i){
-        cmd2 = NULL;
-    } else{
-        cmd2 = &argv[i+1];
-    }
-
-    int fd[2];
+    int fd[2];      //create pipe check for errors.
     if (pipe(fd) == -1){
-        fprintf(stderr, "%s", strerror(errno));
+        fprintf(stderr, "%s\n", strerror(errno));
         exit(1);
     }
 
     int pid = fork();
-    if (pid == -1){
+    if (pid == -1){     //create fork check errors
         close(fd[0]);
         close(fd[1]);
-        fprintf(stderr, "%s", strerror(errno));
+        fprintf(stderr, "%s\n", strerror(errno));
         exit(1);
     }
 
     if (pid == 0){ //child process
-
         close(fd[0]);
-        if(cmd2)dup2(fd[1], STDOUT_FILENO);
-        close(fd[1]);
+        if (cmd2) dup2(fd[1], STDOUT_FILENO);   //if the second command is there
+        close(fd[1]);                           //redirect stdout to the pipe
 
-        if(cmd1)execvp(cmd1[0], cmd1);
-
-        if(cmd1){
-            fprintf(stderr, "%s", strerror(errno));
+        if(cmd1){ //if command 1 present the run it
+            execvp(cmd1[0], cmd1);
+            fprintf(stderr, "%s\n", strerror(errno)); // only returns from execvp if error
             exit(1);
         }
-
-    }
-    else{
-
+    }else{ //parent process
         close(fd[1]);
-        dup2(fd[0], STDIN_FILENO);
+        if (cmd1) dup2(fd[0], STDIN_FILENO); //if command 1 is there redirect sdin to be from pipe
         close(fd[0]);
         
-        if(cmd2)(execvp(cmd2[0], cmd2));
         if(cmd2){
-            fprintf(stderr, "%s", strerror(errno));
+            execvp(cmd2[0], cmd2);
+            fprintf(stderr, "%s\n", strerror(errno));
             exit(1);
         }
 
+        int status; //only gets to this point if command 1 was present and 2 was not if there
+        waitpid(pid, &status, 0);   //if there was an error in command 1 the proper status is returned.
+        return WIFEXITED(status) ? WEXITSTATUS(status) : 0;
     }
 
     return 0;
