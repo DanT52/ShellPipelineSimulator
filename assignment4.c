@@ -1,11 +1,3 @@
-/***********************************************************************
-name:
-	assignment4 -- acts as a pipe using ":" to seperate programs.
-description:	
-	See CS 360 Processes and Exec/Pipes lecture for helpful tips.
-***********************************************************************/
-
-/* Includes and definitions */
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
